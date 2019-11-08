@@ -1,0 +1,404 @@
+syntax = "proto3";
+
+// MLModelScope
+//
+// MLModelScope is a hardware/software agnostic platform
+// to facilitate the evaluation, measurement, and introspection
+// of ML models within AI pipelines. MLModelScope aids application
+// developers in discovering and experimenting with models, data
+// scientists developers in replicating and evaluating for publishing
+// models, and system architects in understanding the performance of AI
+// workloads.
+
+package mlmodelscope.org.dlframework;
+
+import "features.proto";
+import "google/api/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_registration) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.verbose_equal_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.testgen_all) = true;
+option (gogoproto.benchgen_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+option go_package = "dlframework";
+
+message CPUOptions {}
+
+message GPUOptions {
+  // A value between 0 and 1 that indicates what fraction of the
+  // available GPU memory to pre-allocate for each process.  1 means
+  // to pre-allocate all of the GPU memory, 0.5 means the process
+  // allocates ~50% of the available GPU memory.
+  double per_process_gpu_memory_fraction = 1
+      [ (gogoproto.moretags) =
+            "yaml:\"per_process_gpu_memory_fraction,omitempty\"" ];
+
+  // The type of GPU allocation strategy to use.
+  //
+  // Allowed values:
+  // "": The empty string (default) uses a system-chosen default
+  //     which may change over time.
+  //
+  // "BFC": A "Best-fit with coalescing" algorithm, simplified from a
+  //        version of dlmalloc.
+  string allocator_type = 2
+      [ (gogoproto.moretags) = "yaml:\"allocator_type,omitempty\"" ];
+
+  // A comma-separated list of GPU ids that determines the 'visible'
+  // to 'virtual' mapping of GPU devices.  For example, if TensorFlow
+  // can see 8 GPU devices in the process, and one wanted to map
+  // visible GPU devices 5 and 3 as "/device:GPU:0", and "/device:GPU:1", then
+  // one would specify this field as "5,3".  This field is similar in spirit to
+  // the CUDA_VISIBLE_DEVICES environment variable, except it applies to the
+  // visible GPU devices in the process.
+  //
+  // NOTE: The GPU driver provides the process with the visible GPUs
+  // in an order which is not guaranteed to have any correlation to
+  // the *physical* GPU id in the machine.  This field is used for
+  // remapping "visible" to "virtual", which means this operates only
+  // after the process starts.  Users are required to use vendor
+  // specific mechanisms (e.g., CUDA_VISIBLE_DEVICES) to control the
+  // physical to visible device mapping prior to invoking TensorFlow.
+  string visible_device_list = 5
+      [ (gogoproto.moretags) = "yaml:\"visible_device_list,omitempty\"" ];
+
+  // Force all tensors to be gpu_compatible. On a GPU-enabled TensorFlow,
+  // enabling this option forces all CPU tensors to be allocated with Cuda
+  // pinned memory. Normally, TensorFlow will infer which tensors should be
+  // allocated as the pinned memory. But in case where the inference is
+  // incomplete, this option can significantly speed up the cross-device memory
+  // copy performance as long as it fits the memory.
+  // Note that this option is not something that should be
+  // enabled by default for unknown or very large models, since all Cuda pinned
+  // memory is unpageable, having too much pinned memory might negatively impact
+  // the overall host system performance.
+  bool force_gpu_compatible = 8
+      [ (gogoproto.moretags) = "yaml:\"force_gpu_compatible,omitempty\"" ];
+};
+
+message TraceID {
+  string id = 1 [ (gogoproto.moretags) = "yaml:\"id,omitempty\"" ];
+}
+
+message ExecutionOptions {
+  enum TraceLevel {
+    NO_TRACE = 0;
+    APPLICATION_TRACE = 1; // pipelines within carml
+    MODEL_TRACE = 2;       // pipelines within model
+    FRAMEWORK_TRACE = 3;   // layers within framework
+    LIBRARY_TRACE = 4;     // cudnn, ...
+    HARDWARE_TRACE = 5;    // perf, papi, cupti, ...
+    FULL_TRACE = 6;        // includes all of the above
+  }
+  TraceID trace_id = 1 [ (gogoproto.moretags) = "yaml:\"trace_id,omitempty\"" ];
+  TraceLevel trace_level = 2
+      [ (gogoproto.moretags) = "yaml:\"trace_level,omitempty\"" ];
+
+  // Time to wait for operation to complete in milliseconds.
+  uint64 timeout_in_ms = 3
+      [ (gogoproto.moretags) = "yaml:\"timeout_in_ms,omitempty\"" ];
+
+  // Map from device type name (e.g., "CPU" or "GPU" ) to maximum
+  // number of devices of that type to use.  If a particular device
+  // type is not found in the map, the system picks an appropriate
+  // number.
+  map<string, int32> device_count = 4
+      [ (gogoproto.moretags) = "yaml:\"device_count,omitempty\"" ];
+
+  // Options that apply to all CPUs.
+  CPUOptions cpu_options = 5
+      [ (gogoproto.moretags) = "yaml:\"cpu_options,omitempty\"" ];
+
+  // Options that apply to all GPUs.
+  GPUOptions gpu_options = 6
+      [ (gogoproto.moretags) = "yaml:\"gpu_options,omitempty\"" ];
+}
+
+message PredictionOptions {
+  option (gogoproto.description) = true;
+  string request_id = 1 [
+    (gogoproto.customname) = "RequestID",
+    (gogoproto.jsontag) = "request_id,omitempty",
+    (gogoproto.moretags) = "yaml:\"request_id,omitempty\""
+  ];
+  int32 feature_limit = 2
+      [ (gogoproto.moretags) = "yaml:\"feature_limit,omitempty\"" ];
+  int32 batch_size = 3
+      [ (gogoproto.moretags) = "yaml:\"batch_size,omitempty\"" ];
+  ExecutionOptions execution_options = 4
+      [ (gogoproto.moretags) = "yaml:\"execution_options,omitempty\"" ];
+  string agent = 5 [ (gogoproto.moretags) = "yaml:\"agent,omitempty\"" ];
+}
+
+message PredictorOpenRequest {
+  option (gogoproto.description) = true;
+  string model_name = 1
+      [ (gogoproto.moretags) = "yaml:\"model_name,omitempty\"" ];
+  string model_version = 2
+      [ (gogoproto.moretags) = "yaml:\"model_version,omitempty\"" ];
+  string framework_name = 3
+      [ (gogoproto.moretags) = "yaml:\"framework_name,omitempty\"" ];
+  string framework_version = 4
+      [ (gogoproto.moretags) = "yaml:\"framework_version,omitempty\"" ];
+  bool persist = 5 [ (gogoproto.moretags) = "yaml:\"persist,omitempty\"" ];
+  PredictionOptions options = 6
+      [ (gogoproto.moretags) = "yaml:\"options,omitempty\"" ];
+}
+
+message PredictorCloseRequest {
+  option (gogoproto.description) = true;
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+  bool force = 2 [ (gogoproto.moretags) = "yaml:\"force,omitempty\"" ];
+}
+
+message PredictorCloseResponse {}
+
+message Predictor {
+  option (gogoproto.description) = true;
+  string id = 1 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+}
+
+message URLsRequest {
+  message URL {
+    // An id used to identify the output feature: maps to input_id for output
+    string id = 1 [
+      (gogoproto.customname) = "ID",
+      (gogoproto.jsontag) = "id,omitempty",
+      (gogoproto.moretags) = "yaml:\"id,omitempty\""
+    ];
+    string data = 2 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+  }
+  option (gogoproto.description) = true;
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+  repeated URL urls = 2 [ (gogoproto.moretags) = "yaml:\"urls,omitempty\"" ];
+  PredictionOptions options = 3
+      [ (gogoproto.moretags) = "yaml:\"options,omitempty\"" ];
+}
+
+message ImagesRequest {
+  option (gogoproto.description) = true;
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+  // A list of Base64 encoded images
+  repeated Image images = 2
+      [ (gogoproto.moretags) = "yaml:\"images,omitempty\"" ];
+  PredictionOptions options = 3
+      [ (gogoproto.moretags) = "yaml:\"options,omitempty\"" ];
+}
+
+message TextRequest {
+  option (gogoproto.description) = true;
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+  // A list of Base64 encoded texts
+  repeated Text texts = 2
+      [ (gogoproto.moretags) = "yaml:\"texts,omitempty\"" ];
+  PredictionOptions options = 3
+      [ (gogoproto.moretags) = "yaml:\"options,omitempty\"" ];
+}
+
+message DatasetRequest {
+  message Dataset {
+    string category = 1
+        [ (gogoproto.moretags) = "yaml:\"category,omitempty\"" ];
+    string name = 2 [ (gogoproto.moretags) = "yaml:\"name,omitempty\"" ];
+  }
+  option (gogoproto.description) = true;
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+  Dataset dataset = 2 [ (gogoproto.moretags) = "yaml:\"dataset,omitempty\"" ];
+  PredictionOptions options = 3
+      [ (gogoproto.moretags) = "yaml:\"options,omitempty\"" ];
+}
+
+message FeatureResponse {
+  option (gogoproto.description) = true;
+  string id = 1 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+  string request_id = 2 [
+    (gogoproto.customname) = "RequestID",
+    (gogoproto.jsontag) = "request_id,omitempty",
+    (gogoproto.moretags) = "yaml:\"request_id,omitempty\""
+  ];
+  string input_id = 3 [
+    (gogoproto.customname) = "InputID",
+    (gogoproto.jsontag) = "input_id,omitempty",
+    (gogoproto.moretags) = "yaml:\"input_id,omitempty\""
+  ];
+  repeated Feature features = 4
+      [ (gogoproto.moretags) = "yaml:\"features,omitempty\"" ];
+  map<string, string> metadata = 5
+      [ (gogoproto.moretags) = "yaml:\"metadata,omitempty\"" ];
+}
+
+message FeaturesResponse {
+  option (gogoproto.description) = true;
+  string id = 1 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+  TraceID trace_id = 2 [ (gogoproto.moretags) = "yaml:\"trace_id,omitempty\"" ];
+  repeated FeatureResponse responses = 3
+      [ (gogoproto.moretags) = "yaml:\"responses,omitempty\"" ];
+}
+
+message ResetRequest {
+  option (gogoproto.description) = true;
+  string id = 2 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+  Predictor predictor = 1
+      [ (gogoproto.moretags) = "yaml:\"predictor,omitempty\"" ];
+}
+
+message ResetResponse {
+  option (gogoproto.description) = true;
+  Predictor predictor = 1 [
+    (gogoproto.embed) = true,
+    (gogoproto.moretags) = "yaml:\"predictor,omitempty\""
+  ];
+}
+
+service Predict {
+  // Opens a predictor and returns an id where the predictor
+  // is accessible. The id can be used to perform inference
+  // requests.
+  rpc Open(PredictorOpenRequest) returns (Predictor) {
+    option (google.api.http) = {
+      post : "/predict/open",
+      body : "*"
+    };
+  }
+
+  // rpc Information(Predictor) returns (PredictorInformation) {
+  //   option (google.api.http) = {
+  //     post : "/predict/information",
+  //     body : "*"
+  //   };
+  // }
+
+  // Close a predictor clear it's memory.
+  rpc Close(PredictorCloseRequest) returns (PredictorCloseResponse) {
+    option (google.api.http) = {
+      post : "/predict/close",
+      body : "*"
+    };
+  }
+
+  // Image method receives a stream of urls and runs
+  // the predictor on all the urls. The
+  //
+  // The result is a prediction feature stream for each url.
+  rpc URLs(URLsRequest) returns (FeaturesResponse) {
+    option (google.api.http) = {
+      post : "/predict/urls",
+      body : "*"
+    };
+  }
+
+  // Image method receives a stream of urls and runs
+  // the predictor on all the urls. The
+  //
+  // The result is a prediction feature stream for each url.
+  rpc URLsStream(URLsRequest) returns (stream FeatureResponse) {
+    option (google.api.http) = {
+      post : "/predict/stream/urls",
+      body : "*"
+    };
+  }
+
+  // Image method receives a list base64 encoded images and runs
+  // the predictor on all the images.
+  //
+  // The result is a prediction feature list for each image.
+  rpc Images(ImagesRequest) returns (FeaturesResponse) {
+    option (google.api.http) = {
+      post : "/predict/images",
+      body : "*"
+    };
+  }
+
+  // Image method receives a list base64 encoded images and runs
+  // the predictor on all the images.
+  //
+  // The result is a prediction feature stream for each image.
+  rpc ImagesStream(ImagesRequest) returns (stream FeatureResponse) {
+    option (google.api.http) = {
+      post : "/predict/stream/images",
+      body : "*"
+    };
+  }
+
+  // // Text method receives a list base64 encoded texts and runs
+  // // the predictor on all the texts.
+  // //
+  // // The result is a prediction feature list for each text.
+  // rpc Texts(TextRequest) returns (FeaturesResponse) {
+  //   option (google.api.http) = {
+  //     post : "/predict/text",
+  //     body : "*"
+  //   };
+  // }
+
+  // // Text method receives a list base64 encoded texts and runs
+  // // the predictor on all the texts.
+  // //
+  // // The result is a prediction feature stream for each text.
+  // rpc TextsStream(TextRequest) returns (stream FeatureResponse) {
+  //   option (google.api.http) = {
+  //     post : "/predict/stream/text",
+  //     body : "*"
+  //   };
+  // }
+
+  // Dataset method receives a single dataset and runs
+  // the predictor on all elements of the dataset.
+  //
+  // The result is a prediction feature list.
+  rpc Dataset(DatasetRequest) returns (FeaturesResponse) {
+    option (google.api.http) = {
+      post : "/predict/dataset",
+      body : "*"
+    };
+  }
+
+  // Dataset method receives a single dataset and runs
+  // the predictor on all elements of the dataset.
+  //
+  // The result is a prediction feature stream.
+  rpc DatasetStream(DatasetRequest) returns (stream FeatureResponse) {
+    option (google.api.http) = {
+      post : "/predict/stream/dataset",
+      body : "*"
+    };
+  }
+
+  // Clear method clears the internal cache of the predictors
+  rpc Reset(ResetRequest) returns (ResetResponse) {
+    option (google.api.http) = {
+      post : "/predict/reset",
+      body : "*"
+    };
+  }
+}

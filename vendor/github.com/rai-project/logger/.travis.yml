@@ -1,0 +1,21 @@
+language: go
+matrix:
+  include:
+    - go: 1.10.x
+    - go: 1.11.x
+    - go: tip
+  allow_failures:
+    - go: tip
+dist: xenial
+sudo: false
+before_install:
+- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+install:
+- dep ensure -v
+- rm -fr vendor/github.com/Sirupsen
+- find vendor -type f -exec sed -i 's/Sirupsen/sirupsen/g' {} +
+- go build
+script:
+  - echo "Skip tests..."
+after_script:
+  - go test -race -v .

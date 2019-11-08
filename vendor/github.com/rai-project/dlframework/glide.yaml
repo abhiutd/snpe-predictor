@@ -1,0 +1,163 @@
+package: github.com/rai-project/dlframework
+import:
+- package: github.com/Masterminds/semver
+  version: ^1.4.0
+- package: github.com/Unknwon/com
+  version: ^1.0.0
+- package: github.com/VividCortex/robustly
+  version: ^1.1.0-rc
+- package: github.com/anthonynsimon/bild
+  version: ^0.10.0
+  subpackages:
+  - parallel
+- package: github.com/cheggaaa/pb
+  version: ^2.0.6
+- package: github.com/chewxy/hm
+  version: ^1.0.0
+- package: github.com/cockroachdb/cmux
+- package: github.com/davecgh/go-spew
+  version: ~1.1.0
+  subpackages:
+  - spew
+- package: github.com/docker/docker
+  subpackages:
+  - api/types
+- package: github.com/elazarl/go-bindata-assetfs
+- package: github.com/facebookgo/freeport
+- package: github.com/facebookgo/stack
+- package: github.com/fatih/color
+  version: ~1.7.0
+- package: github.com/go-openapi/errors
+- package: github.com/go-openapi/loads
+- package: github.com/go-openapi/runtime
+  subpackages:
+  - client
+  - flagext
+  - middleware
+  - security
+- package: github.com/go-openapi/spec
+- package: github.com/go-openapi/strfmt
+- package: github.com/go-openapi/swag
+- package: github.com/go-openapi/validate
+- package: github.com/gogo/protobuf
+  version: ^1.0.0
+  subpackages:
+  - gogoproto
+  - proto
+  - protoc-gen-gogo/descriptor
+  - sortkeys
+- package: github.com/golang/protobuf
+  version: master
+  subpackages:
+  - proto
+- package: github.com/grpc-ecosystem/grpc-gateway
+  version: ^1.4.1
+  subpackages:
+  - runtime
+  - utilities
+- package: github.com/jessevdk/go-flags
+  version: ^1.3.0
+- package: github.com/jinzhu/copier
+- package: github.com/k0kubun/pp
+  version: ~2.3.0
+- package: github.com/klauspost/shutdown2
+  version: ^1.0.4
+- package: github.com/labstack/echo
+  version: ^3.2.6
+- package: github.com/levigross/grequests
+  version: ^0.9.0
+- package: github.com/mitchellh/go-homedir
+- package: github.com/olekukonko/tablewriter
+- package: github.com/opentracing/opentracing-go
+  version: ^1.0.2
+- package: github.com/pkg/errors
+  version: ~0.8.0
+- package: github.com/rai-project/cmd
+- package: github.com/rai-project/config
+- package: github.com/rai-project/database
+  subpackages:
+  - mongodb
+- package: github.com/rai-project/dldataset
+  subpackages:
+  - vision
+- package: github.com/rai-project/docker
+  version: master
+- package: github.com/rai-project/evaluation
+  subpackages:
+  - cmd
+- package: github.com/rai-project/go-cupti
+  version: master
+- package: github.com/rai-project/grpc
+  version: master
+- package: github.com/rai-project/image
+  version: master
+  subpackages:
+  - types
+- package: github.com/rai-project/libkv
+  version: master
+  subpackages:
+  - store
+- package: github.com/rai-project/lock
+  version: master
+  subpackages:
+  - registry
+- package: github.com/rai-project/logger
+  version: master
+  subpackages:
+  - hooks
+- package: github.com/rai-project/monitoring
+  subpackages:
+  - monitors
+- package: github.com/rai-project/nvidia-smi
+- package: github.com/rai-project/parallel
+  subpackages:
+  - tunny
+- package: github.com/rai-project/pipeline
+- package: github.com/rai-project/registry
+- package: github.com/rai-project/serializer
+- package: github.com/rai-project/tracer
+  version: master
+  subpackages:
+  - jaeger
+  - noop
+  - zipkin
+- package: github.com/rai-project/utils
+- package: github.com/rai-project/uuid
+- package: github.com/rai-project/vipertags
+- package: github.com/rai-project/web
+  subpackages:
+  - logger
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+- package: github.com/spf13/cast
+  version: ^1.1.0
+- package: github.com/spf13/cobra
+  version: ^0.0.1
+- package: github.com/spf13/viper
+  version: ^1.0.0
+- package: github.com/tylerb/graceful
+  version: ^1.2.15
+- package: github.com/uber/jaeger-client-go
+  version: ^2.14.0
+- package: github.com/ulule/deepcopier
+- package: golang.org/x/sync
+  subpackages:
+  - syncmap
+- package: google.golang.org/genproto
+  subpackages:
+  - googleapis/api/annotations
+- package: google.golang.org/grpc
+  version: ^1.12.2
+  subpackages:
+  - codes
+  - grpclog
+  - status
+- package: gopkg.in/mgo.v2
+  subpackages:
+  - bson
+- package: gopkg.in/yaml.v2
+- package: upper.io/db.v3
+  version: ^3.0.0
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert

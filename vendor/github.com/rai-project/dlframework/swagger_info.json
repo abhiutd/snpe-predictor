@@ -1,0 +1,124 @@
+{
+  "info": {
+    "title": "MLModelScope",
+    "description": "MLModelScope is a hardware/software agnostic platform to facilitate the evaluation, measurement, and introspection of ML models within AI pipelines. MLModelScope aids application developers in discovering and experimenting with models, data scientists developers in replicating and evaluating for publishing models, and system architects in understanding the performance of AI workloads.",
+    "version": "0.2.18",
+    "contact": {
+      "name": "Abdul Dakkak, Cheng Li",
+      "url": "https://github.com/rai-project/carml"
+    },
+    "license": {
+      "name": "NCSA/UIUC",
+      "url": "https://raw.githubusercontent.com/rai-project/dlframework/master/LICENSE.TXT"
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Login to MLModelScope platform",
+        "operationId": "Login",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/dlframeworkLoginResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dlframeworkLogin"
+            }
+          }
+        ],
+        "tags": ["Authentication"]
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "summary": "Signup to MLModelScope platform",
+        "operationId": "Signup",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/dlframeworkSignupResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dlframeworkSignup"
+            }
+          }
+        ],
+        "tags": ["Authentication"]
+      }
+    }
+  },
+  "definitions": {
+    "dlframeworkLogin": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "dlframeworkLoginResponse": {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "type": "string"
+        }
+      }
+    },
+    "dlframeworkSignupResponse": {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "dlframeworkSignup": {
+      "type": "object",
+      "properties": {
+        "first_name": {
+          "type": "string"
+        },
+        "last_name": {
+          "type": "string"
+        },
+        "affiliation": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "host": "carml.org",
+  "basePath": "/api",
+  "externalDocs": {
+    "url": "https://rai-project.github.io/carml"
+  }
+}

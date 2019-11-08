@@ -1,0 +1,27 @@
+package: github.com/rai-project/config
+import:
+- package: github.com/GeertJohan/go-sourcepath
+- package: github.com/Unknwon/com
+  version: ^1.0.0
+- package: github.com/fatih/color
+- package: github.com/k0kubun/pp
+  version: ~2.3.0
+- package: github.com/mattn/go-colorable
+- package: github.com/mitchellh/go-homedir
+- package: github.com/pkg/errors
+  version: ~0.8.0
+- package: github.com/rai-project/godotenv
+  version: master
+- package: github.com/rai-project/vipertags
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+- package: github.com/spf13/afero
+- package: github.com/spf13/viper
+  version: master
+  subpackages:
+  - remote
+- package: github.com/GeertJohan/go.rice
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
+  - suite

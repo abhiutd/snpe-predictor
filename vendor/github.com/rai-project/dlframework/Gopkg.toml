@@ -1,0 +1,339 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/GeertJohan/go-sourcepath"
+
+[[constraint]]
+  name = "github.com/Masterminds/semver"
+  version = "1.4.2"
+
+[[constraint]]
+  name = "github.com/Unknwon/com"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/VividCortex/robustly"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/anthonynsimon/bild"
+  version = "0.10.0"
+
+[[constraint]]
+  name = "github.com/cheggaaa/pb"
+  version = "2.0.6"
+
+[[constraint]]
+  name = "github.com/chewxy/hm"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/cockroachdb/cmux"
+
+[[constraint]]
+  name = "github.com/davecgh/go-spew"
+  version = "1.1.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/docker/docker"
+
+[[constraint]]
+  name = "github.com/elazarl/go-bindata-assetfs"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/facebookgo/freeport"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/facebookgo/stack"
+
+[[constraint]]
+  name = "github.com/fatih/color"
+  version = "1.7.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/errors"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/loads"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/runtime"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/spec"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/strfmt"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/swag"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/go-openapi/validate"
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+  version = "1.1.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/protobuf"
+
+[[constraint]]
+  name = "github.com/grpc-ecosystem/grpc-gateway"
+  version = "1.4.1"
+
+[[constraint]]
+  name = "github.com/jessevdk/go-flags"
+  version = "1.4.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jinzhu/copier"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/junegunn/go-shellwords"
+
+[[constraint]]
+  name = "github.com/k0kubun/pp"
+  version = "2.3.0"
+
+[[constraint]]
+  name = "github.com/klauspost/shutdown2"
+  version = "1.0.4"
+
+[[constraint]]
+  name = "github.com/labstack/echo"
+  version = "3.3.5"
+
+[[constraint]]
+  name = "github.com/levigross/grequests"
+  version = "0.9.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/go-homedir"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
+
+[[constraint]]
+  name = "github.com/opentracing/opentracing-go"
+  version = "1.0.2"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/cmd"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/config"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/cpu"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/database"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/dldataset"
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/docker"
+
+[[override]]
+  branch = "master"
+  name = "github.com/rai-project/evaluation"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/go-cupti"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/grpc"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/image"
+
+[[constraint]]
+  name = "github.com/rai-project/libkv"
+  branch = "master"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/lock"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/logger"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/monitoring"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/nvidia-smi"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/parallel"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/pipeline"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/registry"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/serializer"
+
+[[constraint]]
+  name = "github.com/rai-project/tracer"
+  version = "0.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/utils"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/uuid"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/vipertags"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rai-project/web"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.0.5"
+
+[[constraint]]
+  name = "github.com/spf13/cast"
+  version = "1.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/spf13/cobra"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/spf13/viper"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.2"
+
+[[constraint]]
+  name = "github.com/uber/jaeger-client-go"
+  version = "2.14.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ulule/deepcopier"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/sync"
+
+[[constraint]]
+  branch = "master"
+  name = "google.golang.org/genproto"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.13.0"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/mgo.v2"
+
+[[constraint]]
+  name = "gopkg.in/yaml.v2"
+  version = "2.2.1"
+
+[[constraint]]
+  name = "upper.io/db.v3"
+  version = "3.5.3"
+
+[[constraint]]
+  name = "github.com/twpayne/go-geom"
+  branch = "master"
+
+[[override]]
+  branch = "master"
+  name = "github.com/apache/thrift"
+
+[[override]]
+  branch = "master"
+  name = "github.com/VividCortex/robustly"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "gopkg.in/cheggaaa/pb.v2"
+  revision = "2af8bbdea9e99e83b3ac400d8f6b6d1b8cbbf338"

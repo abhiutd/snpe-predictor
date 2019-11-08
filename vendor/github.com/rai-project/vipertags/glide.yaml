@@ -1,0 +1,10 @@
+package: github.com/rai-project/vipertags
+import:
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+- package: github.com/fatih/structs
+- package: github.com/k0kubun/pp
+  version: ~2.3.0
+- package: github.com/spf13/viper
+  version: master
+- package: github.com/spf13/cast

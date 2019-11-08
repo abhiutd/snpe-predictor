@@ -1,0 +1,124 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_embed_data", "go_library", "go_prefix", "go_test")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+go_prefix("github.com/rai-project/dlframework")
+
+filegroup(
+    name = "dockerfiles",
+    srcs = glob(["dockerfiles/*.bzl"]),
+    visibility = ["//visibility:public"],
+)
+
+gazelle(
+    name = "gazelle",
+    external = "vendored",
+    prefix = "github.com/rai-project/dlframework",
+)
+
+gazelle(
+    name = "gazelle_fix",
+    command = "fix",
+    external = "vendored",
+    prefix = "github.com/rai-project/dlframework",
+)
+
+exports_files([
+    "LICENSE.TXT",
+    "README.md",
+    "predictor.proto",
+    "registry.proto",
+])
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "features.go",
+        "framework.go",
+        "init.go",
+        "model.go",
+        "predictor.pb.gw.go",
+        "registry.pb.gw.go",
+        "service.go",
+        "stats.go",
+        "swagger.go",
+        "swagger_export.go",
+        "type_parameter.go",
+        "utils.go",
+        "version.go",
+    ],
+    embed = [":dlframework_go_proto"],
+    importpath = "dlframework",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//vendor/github.com/Masterminds/semver:go_default_library",
+        "//vendor/github.com/Unknwon/com:go_default_library",
+        "//vendor/github.com/golang/protobuf/proto:go_default_library",
+        "//vendor/github.com/grpc-ecosystem/grpc-gateway/runtime:go_default_library",
+        "//vendor/github.com/grpc-ecosystem/grpc-gateway/utilities:go_default_library",
+        "//vendor/github.com/pkg/errors:go_default_library",
+        "//vendor/github.com/rai-project/config:go_default_library",
+        "//vendor/github.com/rai-project/logger:go_default_library",
+        "//vendor/github.com/sirupsen/logrus:go_default_library",
+        "//vendor/github.com/spf13/cast:go_default_library",
+        "//vendor/golang.org/x/net/context:go_default_library",
+        "//vendor/golang.org/x/sync/syncmap:go_default_library",
+        "//vendor/google.golang.org/grpc:go_default_library",
+        "//vendor/google.golang.org/grpc/codes:go_default_library",
+        "//vendor/google.golang.org/grpc/grpclog:go_default_library",
+        "//vendor/google.golang.org/grpc/status:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "dlframework",
+    importpath = "github.com/rai-project/dlframework",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "dlframework_proto",
+    srcs = [
+        "predictor.proto",
+        "registry.proto",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//github.com/gogo/protobuf/gogoproto:gogoproto_proto",
+        "//google/api:api_proto",
+    ],
+)
+
+go_proto_library(
+    name = "dlframework_go_proto",
+    compilers = [
+        "@io_bazel_rules_go//proto:gogofaster_proto",  #keep
+        "@io_bazel_rules_go//proto:go_grpc",
+    ],
+    importpath = "dlframework",
+    proto = ":dlframework_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//github.com/gogo/protobuf/gogoproto:go_default_library",
+        "//google/api:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "model_test.go",
+        "predictorpb_test.go",
+        "registrypb_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//vendor/github.com/gogo/protobuf/gogoproto:go_default_library",
+        "//vendor/github.com/gogo/protobuf/jsonpb:go_default_library",
+        "//vendor/github.com/gogo/protobuf/proto:go_default_library",
+        "//vendor/github.com/golang/protobuf/proto:go_default_library",
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//vendor/google.golang.org/genproto/googleapis/api/annotations:go_default_library",
+        "//vendor/gopkg.in/yaml.v2:go_default_library",
+    ],
+)

@@ -1,0 +1,15 @@
+# This is from Bazel's former travis setup, to avoid blowing up the RAM usage.
+startup --host_jvm_args=-Xmx2500m
+startup --host_jvm_args=-Xms2500m
+startup --batch
+test --ram_utilization_factor=10
+
+
+
+# This is so we understand failures better
+build --verbose_failures
+build --workspace_status_command build/print-workspace-status.sh
+build --curses=no
+build --show_timestamps
+
+test --test_output=all

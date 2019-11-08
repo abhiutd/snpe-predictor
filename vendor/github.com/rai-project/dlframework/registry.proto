@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+// MLModelScope
+//
+// MLModelScope is a hardware/software agnostic platform to 
+// facilitate the evaluation, measurement, and introspection
+// of ML models within AI pipelines. MLModelScope aids application 
+// developers in discovering and experimenting with models, data 
+// scientists developers in replicating and evaluating for 
+// publishing models, and system architects in understanding 
+// the performance of AI workloads.
+
+package carml.org.dlframework;
+
+import "google/api/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_registration) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.verbose_equal_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.testgen_all) = true;
+option (gogoproto.benchgen_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+option go_package = "dlframework";
+
+message ErrorStatus {
+  option (gogoproto.description) = true;
+  bool ok = 1 [ (gogoproto.moretags) = "yaml:\"ok,omitempty\"" ];
+  string message = 2 [ (gogoproto.moretags) = "yaml:\"message,omitempty\"" ];
+}
+
+message ContainerHardware {
+  option (gogoproto.description) = true;
+  string gpu = 1 [ (gogoproto.moretags) = "yaml:\"gpu,omitempty\"" ];
+  string cpu = 2 [ (gogoproto.moretags) = "yaml:\"cpu,omitempty\"" ];
+}
+
+message FrameworkManifest {
+  option (gogoproto.description) = true;
+  string name = 1 [ (gogoproto.moretags) = "yaml:\"name,omitempty\"" ];
+  string version = 2 [ (gogoproto.moretags) = "yaml:\"version,omitempty\"" ];
+  map<string, ContainerHardware> container = 3
+      [ (gogoproto.moretags) = "yaml:\"container,omitempty\"" ];
+}
+
+message ModelManifest {
+  message Type {
+    message Parameter {
+      string value = 1 [ (gogoproto.moretags) = "yaml:\",inline\"" ];
+    }
+    string type = 1 [ (gogoproto.moretags) = "yaml:\"type,omitempty\"" ];
+    string description = 2
+        [ (gogoproto.moretags) = "yaml:\"description,omitempty\"" ];
+    map<string, Parameter> parameters = 3
+        [ (gogoproto.moretags) = "yaml:\"parameters,omitempty\"" ];
+  }
+
+  message Model {
+    string base_url = 1
+        [ (gogoproto.moretags) = "yaml:\"base_url,omitempty\"" ];
+    string weights_path = 2
+        [ (gogoproto.moretags) = "yaml:\"weights_path,omitempty\"" ];
+    string graph_path = 3
+        [ (gogoproto.moretags) = "yaml:\"graph_path,omitempty\"" ];
+    bool is_archive = 4
+        [ (gogoproto.moretags) = "yaml:\"is_archive,omitempty\"" ];
+    string weights_checksum = 5
+        [ (gogoproto.moretags) = "yaml:\"weights_checksum,omitempty\"" ];
+    string graph_checksum = 6
+        [ (gogoproto.moretags) = "yaml:\"graph_checksum,omitempty\"" ];
+  }
+
+  string name = 1 [ (gogoproto.moretags) = "yaml:\"name,omitempty\"" ];
+  string version = 2 [ (gogoproto.moretags) = "yaml:\"version,omitempty\"" ];
+  FrameworkManifest framework = 3
+      [ (gogoproto.moretags) = "yaml:\"framework,omitempty\"" ];
+  map<string, ContainerHardware> container = 4
+      [ (gogoproto.moretags) = "yaml:\"container,omitempty\"" ];
+  string description = 5
+      [ (gogoproto.moretags) = "yaml:\"description,omitempty\"" ];
+  repeated string reference = 6
+      [ (gogoproto.moretags) = "yaml:\"references,omitempty\"" ];
+  string license = 7 [ (gogoproto.moretags) = "yaml:\"license,omitempty\"" ];
+  repeated Type inputs = 8
+      [ (gogoproto.moretags) = "yaml:\"inputs,omitempty\"" ];
+  Type output = 9 [ (gogoproto.moretags) = "yaml:\"output,omitempty\"" ];
+  string before_preprocess = 10
+      [ (gogoproto.moretags) = "yaml:\"before_preprocess,omitempty\"" ];
+  string preprocess = 11
+      [ (gogoproto.moretags) = "yaml:\"preprocess,omitempty\"" ];
+  string after_preprocess = 12
+      [ (gogoproto.moretags) = "yaml:\"after_preprocess,omitempty\"" ];
+  string before_postprocess = 13
+      [ (gogoproto.moretags) = "yaml:\"before_postprocess,omitempty\"" ];
+  string postprocess = 14
+      [ (gogoproto.moretags) = "yaml:\"postprocess,omitempty\"" ];
+  string after_postprocess = 15
+      [ (gogoproto.moretags) = "yaml:\"after_postprocess,omitempty\"" ];
+  Model model = 16 [ (gogoproto.moretags) = "yaml:\"model,omitempty\"" ];
+  map<string, string> attributes = 17
+      [ (gogoproto.moretags) = "yaml:\"attributes,omitempty\"" ];
+  bool hidden = 18 [ (gogoproto.moretags) = "yaml:\"hidden,omitempty\"" ];
+}
+
+message FrameworkRequest {
+  option (gogoproto.description) = true;
+  string framework_name = 1
+      [ (gogoproto.moretags) = "yaml:\"framework_name,omitempty\"" ];
+  string framework_version = 2
+      [ (gogoproto.moretags) = "yaml:\"framework_version,omitempty\"" ];
+}
+
+message FrameworkManifestsResponse {
+  option (gogoproto.description) = true;
+  repeated FrameworkManifest manifests = 1
+      [ (gogoproto.moretags) = "yaml:\"manifests,omitempty\"" ];
+}
+
+message Agent {
+  option (gogoproto.description) = true;
+  string host = 1 [ (gogoproto.moretags) = "yaml:\"host,omitempty\"" ];
+  string port = 2 [ (gogoproto.moretags) = "yaml:\"port,omitempty\"" ];
+  string hostname = 3 [ (gogoproto.moretags) = "yaml:\"hostname,omitempty\"" ];
+  string architecture = 4 [ (gogoproto.moretags) = "yaml:\"architecture,omitempty\"" ];
+  bool hasgpu = 5 [ (gogoproto.moretags) = "yaml:\"hasgpu,omitempty\"" ];
+  string cpuinfo = 6 [ (gogoproto.moretags) = "yaml:\"cpuinfo,omitempty\"" ];
+  string gpuinfo = 7 [ (gogoproto.moretags) = "yaml:\"gpuinfo,omitempty\"" ];
+  repeated FrameworkManifest frameworks = 8 [ (gogoproto.moretags) = "yaml:\"frameworks,omitempty\"" ];
+  map<string, string> metadata = 9
+      [ (gogoproto.moretags) = "yaml:\"metadata,omitempty\"" ];
+}
+
+message Agents {
+  option (gogoproto.description) = true;
+  repeated Agent agents = 1
+      [ (gogoproto.moretags) = "yaml:\"agents,omitempty\"" ];
+}
+
+message ModelRequest {
+  option (gogoproto.description) = true;
+  string framework_name = 1
+      [ (gogoproto.moretags) = "yaml:\"framework_name,omitempty\"" ];
+  string framework_version = 2
+      [ (gogoproto.moretags) = "yaml:\"framework_version,omitempty\"" ];
+  string model_name = 3
+      [ (gogoproto.moretags) = "yaml:\"model_name,omitempty\"" ];
+  string model_version = 4
+      [ (gogoproto.moretags) = "yaml:\"model_version,omitempty\"" ];
+}
+
+message ModelManifestsResponse {
+  option (gogoproto.description) = true;
+  repeated ModelManifest manifests = 1
+      [ (gogoproto.moretags) = "yaml:\"manifests,omitempty\"" ];
+}
+
+service Registry {
+  rpc FrameworkManifests(FrameworkRequest)
+      returns (FrameworkManifestsResponse) {
+    option (google.api.http) = {
+      get : "/registry/frameworks/manifest",
+    };
+  }
+  rpc FrameworkAgents(FrameworkRequest) returns (Agents) {
+    option (google.api.http) = {
+      get : "/registry/frameworks/agent",
+    };
+  }
+  rpc ModelManifests(ModelRequest) returns (ModelManifestsResponse) {
+    option (google.api.http) = {
+      get : "/registry/models/manifest",
+    };
+  }
+  rpc ModelAgents(ModelRequest) returns (Agents) {
+    option (google.api.http) = {
+      get : "/registry/models/agent",
+    };
+  }
+}

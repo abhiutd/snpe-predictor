@@ -1,0 +1,15 @@
+package: github.com/rai-project/utils
+import:
+- package: github.com/Unknwon/com
+  version: ^1.0.0
+- package: github.com/fatih/color
+  version: master
+- package: github.com/pkg/errors
+  version: ~0.8.0
+- package: github.com/spf13/cobra
+  version: master
+  subpackages:
+  - doc
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert

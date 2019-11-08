@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+// MLModelScope
+//
+// MLModelScope is a hardware/software agnostic platform
+// to facilitate the evaluation, measurement, and introspection
+// of ML models within AI pipelines. MLModelScope aids application
+// developers in discovering and experimenting with models, data
+// scientists developers in replicating and evaluating for publishing
+// models, and system architects in understanding the performance of AI
+// workloads.
+
+package mlmodelscope.org.dlframework;
+
+import "google/api/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_registration) = true;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.verbose_equal_all) = true;
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.populate_all) = true;
+option (gogoproto.testgen_all) = true;
+option (gogoproto.benchgen_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+option go_package = "dlframework";
+
+enum FeatureType {
+  UNKNOWN = 0;
+  IMAGE = 1;
+  CLASSIFICATION = 2; 
+  GEOLOCATION = 3;      
+  REGION = 4;   
+  TEXT = 5;    
+  AUDIO = 6;  
+  RAW = 100;     
+}
+
+message Image {
+  // An id used to identify the output feature: maps to input_id for output
+  string id = 1 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+  // The image is base64 encoded
+  bytes data = 2 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+  // Preprocessed is set to true to disable preprocessing.
+  // If enabled then the image is assumed to be rescaled and
+  // encoded as an array of float32 values
+
+  // comment out for now
+  // bool preprocessed = 3
+  //     [ (gogoproto.moretags) = "yaml:\"preprocessed,omitempty\"" ];
+}
+
+message Classification {
+  option (gogoproto.description) = true;
+  int32 index = 1 [ (gogoproto.moretags) = "yaml:\"index,omitempty\"" ];
+  string label = 2 [ (gogoproto.moretags) = "yaml:\"label,omitempty\"" ];
+}
+
+message GeoLocation {
+  option (gogoproto.description) = true;
+  int32 index = 1 [ (gogoproto.moretags) = "yaml:\"index,omitempty\"" ];
+  double latitude = 2 [ (gogoproto.moretags) = "yaml:\"latitude,omitempty\"" ];
+  double longitude = 3
+      [ (gogoproto.moretags) = "yaml:\"longitude,omitempty\"" ];
+}
+
+message Region {
+  option (gogoproto.description) = true;
+  bytes data = 1 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+  string format = 2 [ (gogoproto.moretags) = "yaml:\"format,omitempty\"" ];
+}
+
+message Text {
+  option (gogoproto.description) = true;
+  bytes data = 2 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+}
+
+message Audio {
+  option (gogoproto.description) = true;
+  bytes data = 1 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+  string format = 2 [ (gogoproto.moretags) = "yaml:\"format,omitempty\"" ];
+}
+
+message Raw {
+  option (gogoproto.description) = true;
+  bytes data = 1 [ (gogoproto.moretags) = "yaml:\"data,omitempty\"" ];
+  string format = 2 [ (gogoproto.moretags) = "yaml:\"format,omitempty\"" ];
+}
+
+
+message Feature {
+  option (gogoproto.description) = true;
+  string id = 1 [
+    (gogoproto.customname) = "ID",
+    (gogoproto.jsontag) = "id,omitempty",
+    (gogoproto.moretags) = "yaml:\"id,omitempty\""
+  ];
+  FeatureType type = 3 [ (gogoproto.moretags) = "yaml:\"type,omitempty\"" ];
+  float probability = 4
+      [ (gogoproto.moretags) = "yaml:\"probability,omitempty\"" ];
+  map<string, string> metadata = 5
+      [ (gogoproto.moretags) = "yaml:\"metadata,omitempty\"" ];
+  oneof feature {
+    Classification classification = 6
+        [ (gogoproto.moretags) = "classification:\"index,omitempty\"" ];
+    Image image = 7 [ (gogoproto.moretags) = "image:\"index,omitempty\"" ];
+    Text text = 8 [ (gogoproto.moretags) = "text:\"index,omitempty\"" ];
+    Region region = 9 [ (gogoproto.moretags) = "region:\"index,omitempty\"" ];
+    Audio audio = 10 [ (gogoproto.moretags) = "audio:\"index,omitempty\"" ];
+    GeoLocation geolocation = 11[ (gogoproto.moretags) = "geolocation:\"index,omitempty\"" ];
+    Raw raw = 1000 [ (gogoproto.moretags) = "audio:\"raw,omitempty\"" ];
+  }
+}

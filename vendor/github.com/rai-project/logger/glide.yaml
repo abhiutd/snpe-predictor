@@ -1,0 +1,32 @@
+package: github.com/rai-project/logger
+import:
+- package: github.com/sirupsen/logrus
+  version: ^1.0.0
+  subpackages:
+  - hooks/syslog
+- package: github.com/aws/aws-sdk-go
+  version: ^1.10.35
+  subpackages:
+  - aws
+- package: github.com/evalphobia/logrus_fluent
+  version: ~0.2.1
+- package: github.com/evalphobia/logrus_kinesis
+- package: github.com/facebookgo/stack
+- package: github.com/fatih/color
+- package: github.com/k0kubun/pp
+  version: ~2.3.0
+- package: github.com/knq/sdhook
+- package: github.com/pkg/errors
+  version: ~0.8.0
+- package: github.com/rai-project/aws
+- package: github.com/rai-project/config
+- package: github.com/rai-project/googlecloud
+- package: github.com/rai-project/vipertags
+- package: github.com/sebest/logrusly
+- package: github.com/spf13/viper
+- package: github.com/wercker/journalhook
+- package: github.com/bshuster-repo/logruzio
+- package: gopkg.in/olivere/elastic.v5
+  version: ~5.0.39
+- package: gopkg.in/sohlich/elogrus.v2
+  version: ~2.0.1
