@@ -10,6 +10,14 @@
 #include <iomanip>
 #include <sys/time.h>
 
+#include "SNPE/SNPE.hpp"
+#include "SNPE/SNPEFactory.hpp"
+#include "DlSystem/DlVersion.hpp"
+#include "DlSystem/DlEnums.hpp"
+#include "DlSystem/String.hpp"
+#include "DlContainer/IDlContainer.hpp"
+#include "SNPE/SNPEBuilder.hpp"
+
 #include "predictor.hpp"
 
 #define LOG(x) std::cerr
@@ -28,8 +36,8 @@ class Predictor {
     Predictor(const string &model_file, int batch, int mode, bool verbose, bool profile);
     void Predict(int* inputData_quantize, float* inputData_float, bool quantize);
 
-    std::unique_ptr<tflite::FlatBufferModel> net_;
-    std::unique_ptr<tflite::Interpreter> interpreter;
+    std::unique_ptr<zdl::DlContainer::IDlContainer> net_;
+    std::unique_ptr<zdl::SNPE::SNPE> snpe;
     int width_, height_, channels_;
     int batch_;
     int pred_len_ = 0;
@@ -52,19 +60,13 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
  
   // build a runnable model from given model file
   struct timeval start_time, stop_time;
-  gettimeofday(&start_time, nullptr); 
-  net_ = tflite::FlatBufferModel::BuildFromFile(model_file_char);
-  if(!net_){
-    LOG(FATAL) << "\nFailed to mmap model" << "\n";
-    exit(-1);    
-  }
-  net_->error_reporter();
-  LOG(INFO) << "resolved reporter\n";
-  tflite::ops::builtin::BuiltinOpResolver resolver;
-  tflite::InterpreterBuilder(*net_, resolver)(&interpreter);
-  if(!interpreter) {
-    LOG(FATAL) << "Failed to construct interpreter\n";
-  }	
+  gettimeofday(&start_time, nullptr);
+  // TODO read model file into a network 
+  static zdl::DlSystem::Version_t Version = zdl::SNPE::SNPEFactory::getLibraryVersion();
+  LOG(INFO) << "SNPE Version: " << Version.asString().c_str() << "\n";  
+  net_ = zdl::DlContainer::IDlContainer::open(zdl::DlSystem::String(model_file_char));
+  zdl::SNPE::SNPEBuilder snpeBuilder(net_.get());
+  
   gettimeofday(&stop_time, nullptr);
   // log model loading time
   if(verbose_) {
@@ -73,22 +75,6 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   mode_ = mode;
   batch_ = batch;
   
-  // log model architecture
-  if(verbose_) {
-    LOG(INFO) << "tensors size: " << interpreter->tensors_size() << "\n";
-    LOG(INFO) << "nodes size: " << interpreter->nodes_size() << "\n";
-    LOG(INFO) << "inputs: " << interpreter->inputs().size() << "\n";
-    LOG(INFO) << "inputs(0) name: " << interpreter->GetInputName(0) << "\n";
-    int t_size = interpreter->tensors_size();
-    for(int i = 0; i < t_size; i++) {
-      if(interpreter->tensor(i)->name)
-        LOG(INFO) << i << ": " << interpreter->tensor(i)->name << ", "
-                  << interpreter->tensor(i)->bytes << ", "
-                  << interpreter->tensor(i)->type << ", "
-                  << interpreter->tensor(i)->params.scale << ", " 
-                  << interpreter->tensor(i)->params.zero_point << "\n";
-    }
-  }
 }
 
 void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool quantize) {
