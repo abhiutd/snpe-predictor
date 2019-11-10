@@ -16,7 +16,15 @@
 #include "DlSystem/DlEnums.hpp"
 #include "DlSystem/String.hpp"
 #include "DlContainer/IDlContainer.hpp"
+#include "DlSystem/ITensor.hpp"
+#include "DlSystem/StringList.hpp"
+#include "DlSystem/TensorMap.hpp"
+#include "DlSystem/TensorShape.hpp"
+#include "DlSystem/ITensorFactory.hpp"
 #include "SNPE/SNPEBuilder.hpp"
+#include "DlSystem/RuntimeList.hpp"
+#include "DlSystem/UDLFunc.hpp"
+#include "DlSystem/PlatformConfig.hpp"
 
 #include "predictor.hpp"
 
@@ -61,12 +69,57 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   // build a runnable model from given model file
   struct timeval start_time, stop_time;
   gettimeofday(&start_time, nullptr);
-  // TODO read model file into a network 
+  // read model file into a network 
   static zdl::DlSystem::Version_t Version = zdl::SNPE::SNPEFactory::getLibraryVersion();
   LOG(INFO) << "SNPE Version: " << Version.asString().c_str() << "\n";  
   net_ = zdl::DlContainer::IDlContainer::open(zdl::DlSystem::String(model_file_char));
+  if(net_ == nullptr) {
+    LOG(FATAL) << "Error while opening the container file" << "\n";
+  }
   zdl::SNPE::SNPEBuilder snpeBuilder(net_.get());
   
+  // set udlBundle
+  zdl::DlSystem::UDLFactoryFunc udlFunc = UdlExample::MyUDLFactory;
+  zdl::DlSystem::UDLBundle udlBundle;
+  udlBundle.cookie = (void*)0xdeadbeaf, udlBundle.func = udlFunc;
+  // set hardware backend
+  zdl::DlSystem::Runtime_t runtime = zdl::DlSystem::Runtime_t::CPU;
+  zdl::DlSystem::RuntimeList runtimeList;
+  if(1 <= mode <= 8) {
+    runtime = zdl::DlSystem::Runtime_t::CPU;
+  } else if(mode == 9) {
+    runtime = zdl::DlSystem::Runtime_t::GPU;
+  } else if(mode == 10) {
+    LOG(FATAL) << "Cannot run NNAPI through SNPE" << "\n";
+  } else if (mode == 11) {
+    runtime = zdl::DlSystem::Runtime_t::DSP;
+  } else {
+    LOG(FATAL) << "Invalid hardware mode" << "\n";
+  }
+  // check if chosen runtime is available on the device
+  if(!zdl::SNPE::SNPEFactory::isRuntimeAvailable(runtime)) {
+    LOG(INFO) << "Selected runtime not present. Falling back to CPU" << "\n";
+    runtime = zdl::DlSystem::Runtime_t::CPU;
+  }
+  if(runtimeList.empty()) {
+    runtimeList.add(runtime);
+  }
+  // set user supplied buffer as required
+  // NOTE we do not allow user to set input output buffers
+  // to make our life easier
+  bool useUserSuppliedBuffers = false;
+  zdl::DlSystem::PlatformConfig platformConfig;
+  bool usingInitCaching = false;
+  snpe = snpeBuilder.setOutputLayers({}).
+      .setRuntimeProcessorOrder(runtimeList)
+      .setUdlBundle(udlBundle)
+      .setUseUserSuppliedBuffers(useUserSuppliedBuffers)
+      .setPlatformConfig(platformConfig)
+      .setInitCachedMode(usingInitCaching)
+      .build();
+  if(snpe == nullptr) {
+    LOG(FATAL) << "Error while building SNPE object" << "\n";
+  }
   gettimeofday(&stop_time, nullptr);
   // log model loading time
   if(verbose_) {
@@ -78,80 +131,51 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
 }
 
 void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool quantize) {
-  int input = interpreter->inputs()[0];
-  if(verbose_)
-    LOG(INFO) << "input: " << input << "\n";
-  const std::vector<int> inputs = interpreter->inputs();
-  const std::vector<int> outputs = interpreter->outputs();
+  // check the batch size for the container
+  zdl::DlSystem::TensorShape tensorShape;
+  tensorShape = snpe->getInputDimensions()[0];
+  size_t net_batchSize = tensorShape.getDimension()[0];
   if(verbose_) {
-    LOG(INFO) << "number of inputs: " << inputs.size() << "\n";
-    LOG(INFO) << "number of outputs: " << outputs.size() << "\n";
-  }
-
-  // set appropriate hardware backend
-  switch(mode_) {
-    case 7: {
-      const TfLiteGpuDelegateOptions options = {
-        .metadata = NULL,
-        .compile_options = {
-          .precision_loss_allowed = 1, // FP16
-          .preferred_gl_object_type = TFLITE_GL_OBJECT_TYPE_FASTEST,
-          .dynamic_batch_enabled = 0, // Not fully functional yet
-        },
-      };
-      auto* delegate = TfLiteGpuDelegateCreate(&options);
-      if(!delegate) {
-        LOG(FATAL) << "Unable to create GPU delegate" << "\n";
-      }
-      if(interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
-         LOG(FATAL) << "Failed to apply " << "GPU delegate" << "\n";
-      } else {
-         LOG(INFO) << "Applied " << "GPU delegate" << "\n";
-      }
-      break; }
-    case 8: {
-      auto delegate = tflite::evaluation::CreateNNAPIDelegate();
-      if(!delegate) {
-        LOG(INFO) << "NNAPI acceleration is unsupported on this platform" << "\n";
-      }
-      interpreter->UseNNAPI(true);
-      break; }
-    case 1: {
-      interpreter->SetNumThreads(1); 
-      break; }
-    case 2: {
-      interpreter->SetNumThreads(2); 
-      break; }
-    case 3: {
-      interpreter->SetNumThreads(3); 
-      break; }
-    case 4: {
-      interpreter->SetNumThreads(4); 
-      break; }
-    case 5: {
-      interpreter->SetNumThreads(5); 
-      break; }
-    case 6: {
-      interpreter->SetNumThreads(6);
-      break; }
-    default: {
-      interpreter->SetNumThreads(4); }
+    LOG(INFO) << "Batch size for the container is " << net_batchSize << "\n";
   }
   
-  if(interpreter->AllocateTensors() != kTfLiteOk) {
-    LOG(FATAL) << "Failed to allocate tensors!";
-  }
+  std::string bufferType = ITENSOR;
+  zdl::DlSystem::TensorMap outputTensorMap;
 
-  // fill input buffers
-  TfLiteTensor* input_tensor = interpreter->tensor(input);
-  TfLiteIntArray* input_dims = input_tensor->dims;
-  height_ = input_dims->data[1];
-  width_ = input_dims->data[2];
-  channels_ = input_dims->data[3];
-  if(verbose_) {
-    LOG(INFO) << "Model input height is " << height_ << "\n";
-    LOG(INFO) << "Model input width is " << width_ << "\n";
-    LOG(INFO) << "Model input channel is " << channels_ << "\n";
+  std::unique_ptr<zdl::DlSystem::ITensor> input;
+  const auto &strList_opt = snpe->getInputTensorNames();
+  if(!strList_opt) {
+    LOG(FATAL) << "Error obtaining Input tensor names" << "\n";
+  }
+  const auto &strList = *strList_opt;
+  // make sure the network requires only a single input
+  assert (strList.size() == 1);
+
+  // create an input tensor that is correctly sized to hold the input of the network
+  // Dimensions that have no fixed size will be represented with a value of 0
+  const auto &inputDims_opt = snpe->getInputDimensions(strList.at(0));
+  const auto &inputShape = *inputDims_opt;
+
+  // calculate the total number of elements that can be stored in the tensor so that
+  // we can check that the input contains the expected number of elememnts
+  input = zdl::SNPE::SNPEFactory::getTensorFactory().createTensor(inputShape);
+
+  // TODO padding the input vetcor so as to make the size of the vector to be equal
+  // to an intgeret multiple of the  batch size
+  // NOTE: for now we assume that the input model is going to have a batch size == 1
+
+  // TODO set input dimensions
+  width_ = 224;
+  height_ = 224;
+  channels_ = 3;
+  if(width_ != inputShape[2]) {
+    LOG(FATAL) << "width is not 224, need to resize" << "\n";
+  }
+  if(height != inputShape[1]) {
+    LOG(FATAL) << "height is not 224, need to resize" << "\n";
+  }
+  if(channels_ != inputShape[3]) {
+    LOG(FATAL) << "channel is not 3, can't do anything" << "\n";
   }
 
   // set quantization
@@ -160,50 +184,30 @@ void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool qu
   // check if model bitwidth matches our expectation
   // input image = 224 X 224 X 3
   // resize it to what model expects if needed
-  if(interpreter->tensor(input)->type == kTfLiteFloat32 && quantize_ == false) {
+  if(quantize_ == false) {
     LOG(INFO) << "Running float model" << "\n";
-    if(height_ != 224 || width_ != 224 | channels_ != 3) {
-      SetInputTflite_float(interpreter->typed_tensor<float>(input), inputData_float, 224, 224, 3, height_, width_, channels_);
-    } else {
-      memcpy(interpreter->typed_tensor<float>(input), &inputData_float[0], size);
+    float* base_pointer = &input[0];
+    for(int i = 0; i < size; i++) {
+      base_pointer[i] = inputData_float[i];
     }
-  } else if (interpreter->tensor(input)->type == kTfLiteUInt8 && quantize_ == true) {
+  } else if (quantize_ == true) {
     LOG(INFO) << "Running 8-bit unsigned quantized model" << "\n";
-    if(height_ != 224 || width_ != 224 || channels_ != 3) {
-      SetInputTflite_quantize_8_unsigned(interpreter->typed_tensor<uint8_t>(input), inputData_quantize, 224, 224, 3, height_, width_, channels_);
-    } else {
-      uint8_t* base_pointer = interpreter->typed_tensor<uint8_t>(input);
-      for(int i = 0; i < size; i++) {
-        base_pointer[i] = (uint8_t)inputData_quantize[i];
-      }
-    }
-  } else if(interpreter->tensor(input)->type == kTfLiteInt8 && quantize_ == true) {
-    LOG(INFO) << "Running 8-bit signed quantized model" << "\n";
-    if(height_ != 224 || width_ != 224 || channels_ != 3) {
-      SetInputTflite_quantize_8_signed(interpreter->typed_tensor<int8_t>(input), inputData_quantize, 224, 224, 3, height_, width_, channels_);
-    } else {
-      int8_t* base_pointer = interpreter->typed_tensor<int8_t>(input);
-      for(int i = 0; i < size; i++) {
-        base_pointer[i] = (int8_t)inputData_quantize[i];
-      }
-    }
+    // TODO add quantization
   } else {
-    LOG(FATAL) << "Unsupported input type: " << interpreter->tensor(input)->type << ", Quantize: " << quantize_ << "\n";
+    LOG(FATAL) << "Unsupported input type: " << ", Quantize: " << quantize_ << "\n";
   }
 
-  // TODO interpreter profiler not fetching any information
-  auto profiler = absl::make_unique<profiling::Profiler>(1024);
-  interpreter->SetProfiler(profiler.get());
-  if(profile_ == true) {
-    LOG(INFO) << "Starting profiler" << "\n";
-    profiler->StartProfiling();
+  if(!input) {
+    LOG(FATAL) << "could not read an empty tensor" << "\n";
   }
 
+  bool execStatus = false;
   struct timeval start_time, stop_time;
   gettimeofday(&start_time, nullptr);  
   // run inference
-  if(interpreter->Invoke() != kTfLiteOk) {
-    LOG(FATAL) << "Failed to invoke tflite" << "\n";
+  execStatus = snpe->execute(input.get(), outputTensorMap);
+  if(execStatus == false) {
+    LOG(FATAL) << "Failed to run inference" << "\n";
   }
   gettimeofday(&stop_time, nullptr);
   // log model inference
@@ -211,51 +215,21 @@ void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool qu
     LOG(INFO) << "Model computation (C++): " << (get_us(stop_time) - get_us(start_time))/1000 << "ms \n"; 
   }
 
-  if(profile_ == true) {
-    LOG(INFO) << "Stopping profiler" << "\n";
-    profiler->StopProfiling();
-    auto profile_events = profiler->GetProfileEvents();
-    for(int i = 0; i < profile_events.size(); i++) {
-      LOG(INFO) << "Inside profiler loop" << "\n";
-      auto op_index = profile_events[i]->event_metadata;
-      const auto node_and_registration = interpreter->node_and_registration(op_index);
-      const TfLiteRegistration registration = node_and_registration->second;
-      LOG(INFO) << std::fixed << std::setw(10) << std::setprecision(3)
-                << (profile_events[i]->end_timestamp_us - profile_events[i]->begin_timestamp_us) / 1000.0
-                << ", Node" << std::setw(3) << std::setprecision(3) << op_index
-                << ", OpCode" << std::setw(3) << std::setprecision(3)
-                << registration.builtin_code << ", "
-                << EnumNameBuiltinOperator(static_cast<BuiltinOperator>(registration.builtin_code))
-                << "\n";
+  // store output
+  // TODO fetch output size from output tensor map
+  result_float_ = new float[output_size];
+  zdl::DlSystem::StringList tensorNames = outputTensorMap.getTensorNames();
+  for(auto& name : tensorNames) {
+    auto tensorPtr = outputTensorMap.getTensor(name);
+    for(auto it = tensorPtr->cbegin(); it != tensorPtr->cend(); it++) {
+      result_float_[i] = *it;
     }
-    LOG(INFO) << "Displayed layer wise profiling information" << "\n" ;
   }
 
-  // read and store model predictions
-  int output = interpreter->outputs()[0];
-  TfLiteIntArray* output_dims = interpreter->tensor(output)->dims;
-  auto output_size = output_dims->data[output_dims->size-1];
   pred_len_ = output_size;
-  
-  result_float_ = new float[output_size];
-  if(interpreter->tensor(output)->type == kTfLiteFloat32) {
-    float* prediction = interpreter->typed_output_tensor<float>(0);
-    for(int i = 0; i < output_size; i++)
-      result_float_[i] = prediction[i]; 
-  }	else if(interpreter->tensor(output)->type == kTfLiteUInt8) {
-    uint8_t* prediction = interpreter->typed_output_tensor<uint8_t>(0);
-    for(int i = 0; i < output_size; i++)
-      result_float_[i] = prediction[i] / 255.0; 
-  } else if(interpreter->tensor(output)->type == kTfLiteInt8) {
-    int8_t* prediction = interpreter->typed_output_tensor<int8_t>(0);
-    for(int i = 0; i < output_size; i++)
-      result_float_[i] = prediction[i] / 255.0;
-  } else {
-    LOG(FATAL) << "Unsupported output type: " << interpreter->tensor(output)->type << "\n";
-  }
 }
 
-PredictorContext NewTflite(char *model_file, int batch, int mode, bool verbose, bool profile) {
+PredictorContext NewSnpe(char *model_file, int batch, int mode, bool verbose, bool profile) {
   try {
     const auto ctx = new Predictor(model_file, batch, mode, verbose, profile);
     return (void *) ctx;
@@ -265,9 +239,9 @@ PredictorContext NewTflite(char *model_file, int batch, int mode, bool verbose, 
   }
 }
 
-void InitTflite() {}
+void InitSnpe() {}
 
-void PredictTflite(PredictorContext pred, int* inputData_quantize, float* inputData_float, bool quantize) {
+void PredictSnpe(PredictorContext pred, int* inputData_quantize, float* inputData_float, bool quantize) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return;
@@ -276,7 +250,7 @@ void PredictTflite(PredictorContext pred, int* inputData_quantize, float* inputD
   return;
 }
 
-float* GetPredictionsTflite(PredictorContext pred) {
+float* GetPredictionsSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return nullptr;
@@ -284,7 +258,7 @@ float* GetPredictionsTflite(PredictorContext pred) {
   return predictor->result_float_;
 }
 
-void DeleteTflite(PredictorContext pred) {
+void DeleteSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return;
@@ -292,7 +266,7 @@ void DeleteTflite(PredictorContext pred) {
   delete predictor;
 }
 
-int GetWidthTflite(PredictorContext pred) {
+int GetWidthSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return 0;
@@ -300,7 +274,7 @@ int GetWidthTflite(PredictorContext pred) {
   return predictor->width_;
 }
 
-int GetHeightTflite(PredictorContext pred) {
+int GetHeightSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
   return 0;
@@ -308,7 +282,7 @@ int GetHeightTflite(PredictorContext pred) {
   return predictor->height_;
 }
 
-int GetChannelsTflite(PredictorContext pred) {
+int GetChannelsSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return 0;
@@ -316,183 +290,11 @@ int GetChannelsTflite(PredictorContext pred) {
   return predictor->channels_;
 }
 
-int GetPredLenTflite(PredictorContext pred) {
+int GetPredLenSnpe(PredictorContext pred) {
   auto predictor = (Predictor *)pred;
   if (predictor == nullptr) {
     return 0;
   }
   return predictor->pred_len_;
-}
-
-void SetInputTflite_float(float* out, float* in, int image_height, int image_width, int image_channels, int model_height, int model_width, int model_channels) {
-  
-  int number_of_pixels = image_height * image_width * image_channels;
-  
-  // create  a new interpreter to resize input image into model's desired dimensions
-  std::unique_ptr<Interpreter> interpreter(new Interpreter);
-  int base_index = 0;
-  // two inputs: input and new_sizes
-  interpreter->AddTensors(2, &base_index);
-  // one output
-  interpreter->AddTensors(1, &base_index);
-  // set input and output tensors
-  interpreter->SetInputs({0, 1});
-  interpreter->SetOutputs({2});
-
-  // set parameters of tensors
-  TfLiteQuantizationParams quant;
-  interpreter->SetTensorParametersReadWrite(
-      0, kTfLiteFloat32, "input",
-      {1, image_height, image_width, image_channels}, quant);
-  interpreter->SetTensorParametersReadWrite(1, kTfLiteInt32, "new_size", {2},
-                                            quant);
-  interpreter->SetTensorParametersReadWrite(
-      2, kTfLiteFloat32, "output",
-      {1, model_height, model_width, model_channels}, quant);
-
-  ops::builtin::BuiltinOpResolver resolver;
-  const TfLiteRegistration* resize_op =
-      resolver.FindOp(BuiltinOperator_RESIZE_BILINEAR, 1);
-  auto* params = reinterpret_cast<TfLiteResizeBilinearParams*>(
-      malloc(sizeof(TfLiteResizeBilinearParams)));
-  params->align_corners = false;
-  interpreter->AddNodeWithParameters({0, 1}, {2}, nullptr, 0, params, resize_op,
-                                     nullptr);
-
-  interpreter->AllocateTensors();
-
-  // fill input image
-  auto input = interpreter->typed_tensor<float>(0);
-  for (int i = 0; i < number_of_pixels; i++) {
-    input[i] = in[i];
-  }
-
-  // fill new_sizes
-  interpreter->typed_tensor<int>(1)[0] = model_height;
-  interpreter->typed_tensor<int>(1)[1] = model_width;
-
-  interpreter->Invoke();
-
-  auto output = interpreter->typed_tensor<float>(2);
-  auto output_number_of_pixels = model_height * model_width * model_channels;
-
-  for (int i = 0; i < output_number_of_pixels; i++) {
-      out[i] = output[i];
-  }
-}
-
-void SetInputTflite_quantize_8_unsigned(uint8_t* out, int* in, int image_height, int image_width, int image_channels, int model_height, int model_width, int model_channels) {
-  
-  int number_of_pixels = image_height * image_width * image_channels;
-  
-  // create  a new interpreter to resize input image into model's desired dimensions
-  std::unique_ptr<Interpreter> interpreter(new Interpreter);
-  int base_index = 0;
-  // two inputs: input and new_sizes
-  interpreter->AddTensors(2, &base_index);
-  // one output
-  interpreter->AddTensors(1, &base_index);
-  // set input and output tensors
-  interpreter->SetInputs({0, 1});
-  interpreter->SetOutputs({2});
-
-  // set parameters of tensors
-  TfLiteQuantizationParams quant;
-  interpreter->SetTensorParametersReadWrite(
-      0, kTfLiteFloat32, "input",
-      {1, image_height, image_width, image_channels}, quant);
-  interpreter->SetTensorParametersReadWrite(1, kTfLiteInt32, "new_size", {2},
-                                            quant);
-  interpreter->SetTensorParametersReadWrite(
-      2, kTfLiteFloat32, "output",
-      {1, model_height, model_width, model_channels}, quant);
-
-  ops::builtin::BuiltinOpResolver resolver;
-  const TfLiteRegistration* resize_op =
-      resolver.FindOp(BuiltinOperator_RESIZE_BILINEAR, 1);
-  auto* params = reinterpret_cast<TfLiteResizeBilinearParams*>(
-      malloc(sizeof(TfLiteResizeBilinearParams)));
-  params->align_corners = false;
-  interpreter->AddNodeWithParameters({0, 1}, {2}, nullptr, 0, params, resize_op,
-                                     nullptr);
-
-  interpreter->AllocateTensors();
-
-  // fill input image
-  auto input = interpreter->typed_tensor<float>(0);
-  for (int i = 0; i < number_of_pixels; i++) {
-    input[i] = in[i];
-  }
-
-  // fill new_sizes
-  interpreter->typed_tensor<int>(1)[0] = model_height;
-  interpreter->typed_tensor<int>(1)[1] = model_width;
-
-  interpreter->Invoke();
-
-  auto output = interpreter->typed_tensor<float>(2);
-  auto output_number_of_pixels = model_height * model_width * model_channels;
-
-  for (int i = 0; i < output_number_of_pixels; i++) {
-      out[i] = (uint8_t)output[i];
-  }
-}
-
-
-void SetInputTflite_quantize_8_signed(int8_t* out, int* in, int image_height, int image_width, int image_channels, int model_height, int model_width, int model_channels) {
-  
-  int number_of_pixels = image_height * image_width * image_channels;
-  
-  // create  a new interpreter to resize input image into model's desired dimensions
-  std::unique_ptr<Interpreter> interpreter(new Interpreter);
-  int base_index = 0;
-  // two inputs: input and new_sizes
-  interpreter->AddTensors(2, &base_index);
-  // one output
-  interpreter->AddTensors(1, &base_index);
-  // set input and output tensors
-  interpreter->SetInputs({0, 1});
-  interpreter->SetOutputs({2});
-
-  // set parameters of tensors
-  TfLiteQuantizationParams quant;
-  interpreter->SetTensorParametersReadWrite(
-      0, kTfLiteFloat32, "input",
-      {1, image_height, image_width, image_channels}, quant);
-  interpreter->SetTensorParametersReadWrite(1, kTfLiteInt32, "new_size", {2},
-                                            quant);
-  interpreter->SetTensorParametersReadWrite(
-      2, kTfLiteFloat32, "output",
-      {1, model_height, model_width, model_channels}, quant);
-
-  ops::builtin::BuiltinOpResolver resolver;
-  const TfLiteRegistration* resize_op =
-      resolver.FindOp(BuiltinOperator_RESIZE_BILINEAR, 1);
-  auto* params = reinterpret_cast<TfLiteResizeBilinearParams*>(
-      malloc(sizeof(TfLiteResizeBilinearParams)));
-  params->align_corners = false;
-  interpreter->AddNodeWithParameters({0, 1}, {2}, nullptr, 0, params, resize_op,
-                                     nullptr);
-
-  interpreter->AllocateTensors();
-
-  // fill input image
-  auto input = interpreter->typed_tensor<float>(0);
-  for (int i = 0; i < number_of_pixels; i++) {
-    input[i] = in[i];
-  }
-
-  // fill new_sizes
-  interpreter->typed_tensor<int>(1)[0] = model_height;
-  interpreter->typed_tensor<int>(1)[1] = model_width;
-
-  interpreter->Invoke();
-
-  auto output = interpreter->typed_tensor<float>(2);
-  auto output_number_of_pixels = model_height * model_width * model_channels;
-
-  for (int i = 0; i < output_number_of_pixels; i++) {
-      out[i] = (int8_t)output[i];
-  }
 }
 
