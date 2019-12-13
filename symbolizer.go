@@ -1,3 +1,3 @@
 // +build cgo
 
-package tflite
+package snpe

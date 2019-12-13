@@ -30,7 +30,7 @@
 
 #define LOG(x) std::cerr
 
-using namespace snpe;
+//using namespace snpe;
 using std::string;
 
 double get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }
@@ -50,7 +50,6 @@ class Predictor {
     int batch_;
     int pred_len_ = 0;
     int mode_ = 0;
-    TfLiteTensor* result_;
     float* result_float_;
     bool quantize_ = false;
     bool verbose_ = false; // display model details
@@ -65,6 +64,8 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   // set verbosity and profiling levels
   profile_ = profile;
   verbose_ = verbose;
+  mode_ = mode;
+  batch_ = batch;
  
   // build a runnable model from given model file
   struct timeval start_time, stop_time;
@@ -79,19 +80,20 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   zdl::SNPE::SNPEBuilder snpeBuilder(net_.get());
   
   // set udlBundle
-  zdl::DlSystem::UDLFactoryFunc udlFunc = UdlExample::MyUDLFactory;
+  // let udlFunc be the default factory func
+  //zdl::DlSystem::UDLFactoryFunc udlFunc = udlexample::MyUDLFactory;
   zdl::DlSystem::UDLBundle udlBundle;
-  udlBundle.cookie = (void*)0xdeadbeaf, udlBundle.func = udlFunc;
+  udlBundle.cookie = (void*)0xdeadbeaf;
   // set hardware backend
   zdl::DlSystem::Runtime_t runtime = zdl::DlSystem::Runtime_t::CPU;
   zdl::DlSystem::RuntimeList runtimeList;
-  if(1 <= mode <= 8) {
+  if((mode_ > 0) && (mode_ < 9)) {
     runtime = zdl::DlSystem::Runtime_t::CPU;
-  } else if(mode == 9) {
+  } else if(mode_ == 9) {
     runtime = zdl::DlSystem::Runtime_t::GPU;
-  } else if(mode == 10) {
+  } else if(mode_ == 10) {
     LOG(FATAL) << "Cannot run NNAPI through SNPE" << "\n";
-  } else if (mode == 11) {
+  } else if (mode_ == 11) {
     runtime = zdl::DlSystem::Runtime_t::DSP;
   } else {
     LOG(FATAL) << "Invalid hardware mode" << "\n";
@@ -110,12 +112,12 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   bool useUserSuppliedBuffers = false;
   zdl::DlSystem::PlatformConfig platformConfig;
   bool usingInitCaching = false;
-  snpe = snpeBuilder.setOutputLayers({}).
+  snpe = snpeBuilder.setOutputLayers({})
       .setRuntimeProcessorOrder(runtimeList)
       .setUdlBundle(udlBundle)
       .setUseUserSuppliedBuffers(useUserSuppliedBuffers)
       .setPlatformConfig(platformConfig)
-      .setInitCachedMode(usingInitCaching)
+      .setInitCacheMode(usingInitCaching)
       .build();
   if(snpe == nullptr) {
     LOG(FATAL) << "Error while building SNPE object" << "\n";
@@ -125,21 +127,19 @@ Predictor::Predictor(const string &model_file, int batch, int mode, bool verbose
   if(verbose_) {
     LOG(INFO) << "Model loading (C++): " << (get_us(stop_time) - get_us(start_time))/1000 << "ms \n";
   }
-  mode_ = mode;
-  batch_ = batch;
   
 }
 
 void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool quantize) {
   // check the batch size for the container
   zdl::DlSystem::TensorShape tensorShape;
-  tensorShape = snpe->getInputDimensions()[0];
-  size_t net_batchSize = tensorShape.getDimension()[0];
+  tensorShape = snpe->getInputDimensions();
+  size_t net_batchSize = tensorShape.getDimensions()[0];
   if(verbose_) {
     LOG(INFO) << "Batch size for the container is " << net_batchSize << "\n";
   }
   
-  std::string bufferType = ITENSOR;
+  std::string bufferType = "ITENSOR";
   zdl::DlSystem::TensorMap outputTensorMap;
 
   std::unique_ptr<zdl::DlSystem::ITensor> input;
@@ -171,7 +171,7 @@ void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool qu
   if(width_ != inputShape[2]) {
     LOG(FATAL) << "width is not 224, need to resize" << "\n";
   }
-  if(height != inputShape[1]) {
+  if(height_ != inputShape[1]) {
     LOG(FATAL) << "height is not 224, need to resize" << "\n";
   }
   if(channels_ != inputShape[3]) {
@@ -186,10 +186,12 @@ void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool qu
   // resize it to what model expects if needed
   if(quantize_ == false) {
     LOG(INFO) << "Running float model" << "\n";
-    float* base_pointer = &input[0];
-    for(int i = 0; i < size; i++) {
-      base_pointer[i] = inputData_float[i];
+    // copy array into a vector
+    std::vector<float> temp;
+    for(int i = 0; i < size; i++){
+      temp[i] = inputData_float[i];
     }
+    std::copy(temp.begin(), temp.end(), input->begin());
   } else if (quantize_ == true) {
     LOG(INFO) << "Running 8-bit unsigned quantized model" << "\n";
     // TODO add quantization
@@ -215,15 +217,21 @@ void Predictor::Predict(int* inputData_quantize, float* inputData_float, bool qu
     LOG(INFO) << "Model computation (C++): " << (get_us(stop_time) - get_us(start_time))/1000 << "ms \n"; 
   }
 
-  // store output
-  // TODO fetch output size from output tensor map
-  result_float_ = new float[output_size];
+  // handle output
+  int output_size = 0;
+  std::vector<float> result_temp;
   zdl::DlSystem::StringList tensorNames = outputTensorMap.getTensorNames();
   for(auto& name : tensorNames) {
+    LOG(INFO) << "Output tensor name: " << name << "\n";
     auto tensorPtr = outputTensorMap.getTensor(name);
+    output_size += tensorPtr->getSize();
     for(auto it = tensorPtr->cbegin(); it != tensorPtr->cend(); it++) {
-      result_float_[i] = *it;
+      result_temp.push_back(*it);
     }
+  }
+  result_float_ = new float[output_size];
+  for(int i = 0; i < output_size; i++) {
+    result_float_[i] = result_temp[i];
   }
 
   pred_len_ = output_size;
